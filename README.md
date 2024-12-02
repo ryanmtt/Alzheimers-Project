@@ -8,9 +8,7 @@ which looks into the evidence surrounding an interaction between blood pressure 
 # Environment details
 R version 4.4.2 
 
-# Data formatting 
-Genotype data used to construct the PRS must be formatted correctly. The following code gets csv files into appropriate txt format:
-```R
+
 
 
 
