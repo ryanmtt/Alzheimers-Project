@@ -1,10 +1,9 @@
 # Move SNP files from home server onto HPC 
 # log into HPC 
 # Ensure plink is installed
-```
+
 module spider plink2
 module load apps/plink2/2.00a6LM
-```
 # Then run the following code, which will produce a .sscore file with the PRS score of each individual in UKB:
 # For AD:
 module load plink
