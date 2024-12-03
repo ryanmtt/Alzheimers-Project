@@ -1,8 +1,6 @@
-#Tutorial: Access UKB Imputation Data on QMUL Apocrita + Run PRS
 #1. Create CSV 
 #2. Extract SNPs From BGEN - (using Terminal)
 #3. Ensure SNP alignment - (using Terminal)
-#4. Calculate PRS - (using Terminal)
 rm(list=ls())
 #------------------------------------------------------------------------
 #1. Create CSV
@@ -12,7 +10,7 @@ rm(list=ls())
 # Make sure "Beta" are all risk increasing
 # Upload csv into same folder as your imputation data on the server
 
-#In this example I'll be using diastolic blood pressure SNPs: "DBP_MR.csv"
+#For diastolic blood pressure SNPs: "DBP_MR.csv"
 ##########################################################################
 #------------------------------------------------------------------------
 #2. Extract SNPs From BGEN - (using Terminal)
@@ -158,6 +156,3 @@ bgenix -g instruments_DBP_MR_New.bgen -index
 #Create SNP effect list
 cd /data/scratch/xxxxx/Imputations
 awk 'NR > 1 {print $1, $4, $6}' FS=',' OFS=' ' DBP_MR.csv | sed 's/"//g' > SNP_effect_DBP_MR.txt
-#Calculate PRS
-module load plink
-plink2 --bgen instruments_DBP_MR_New.bgen ref-first --sample ukb22828_c1_b0_v3_s487038.sample --score SNP_effect_DBP_MR.txt no-mean-imputation list-variants cols=+scoresums --out DBP_MR_PRS
