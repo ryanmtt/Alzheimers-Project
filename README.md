@@ -21,9 +21,11 @@ This can be broken down into 4 main steps:
  1. Data preprocessing - formatting SNPs and constructing PRS for AD, SBP, DBP, WMH
  
  See `1-PRS-creation` directory 
+ 
  2. Data cleaning and merging phenotype and genotype data
  
  See `2-cleaning-and-merging` directory 
+ 
  3. Primary and supplementary regression creation  
  
  See `3-data-analysis` directory
