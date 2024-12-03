@@ -44,3 +44,7 @@ R code to clean the data, merge it, and run the analysis are stored in:
 Project/R-code
 ```
 
+Phenotypic data from UKB is stored in: 
+```
+Project/UK-Biobank-Data
+```
