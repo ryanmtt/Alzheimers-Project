@@ -1,0 +1,163 @@
+#Tutorial: Access UKB Imputation Data on QMUL Apocrita + Run PRS
+#1. Create CSV 
+#2. Extract SNPs From BGEN - (using Terminal)
+#3. Ensure SNP alignment - (using Terminal)
+#4. Calculate PRS - (using Terminal)
+rm(list=ls())
+#------------------------------------------------------------------------
+#1. Create CSV
+#------------------------------------------------------------------------
+# create a csv with the following columns
+"rsid|chr_name|chr_position|effect_allele|noneffect_allele|Beta"
+# Make sure "Beta" are all risk increasing
+# Upload csv into same folder as your imputation data on the server
+
+#In this example I'll be using diastolic blood pressure SNPs: "DBP_MR.csv"
+##########################################################################
+#------------------------------------------------------------------------
+#2. Extract SNPs From BGEN - (using Terminal)
+#------------------------------------------------------------------------
+# login into hpc
+#set current directory to scratch in directory where all Imputation data is
+# cd /data/scratch/xxxxx/Imputations
+
+#load necessary modules
+module unload gcc
+module load gcc/7.1.0
+module load bgen
+module load sqlite/3.36.0
+
+#create rsid and chromosome list from DBP_MR.csv
+awk -F, '{ if (NR>1) { print $1 }}' DBP_MR.csv | sed 's/"//g' > rsidlist_DBP_MR.txt
+awk -F, '{ if (NR>1) { print sprintf("%2d", $2)":"$3"-"$3 }}' DBP_MR.csv | sed 's/"//g' > chrposlist_DBP_MR.txt
+
+#create job to extract 455 snps
+vim extract_snps_DBP.sh
+#####################################################
+#------[JOB SCRIPT]-----
+"a) This is called a shebang. It tells the system to execute this script with the Bash shell"
+#!/bin/bash
+"b) It means to execute the job from the current working directory"
+#$ -cwd
+"c) Lets the name of the job to "extract_snp_DBP" in the job scheduler"
+#$ -N extract_snp_DBP
+"d) Sets a resource limit for the job, specifically a hard runtime limit of 4 hours"
+#$ -l h_rt=04:00:00
+"e) Means it can use up to 8 CPU cores."
+#$ -pe smp 8
+"f) Specifies the path to the file where standard output & error will be written"
+#$ -o /data/scratch/xxxxx/New_UKB/PHEWAS/MR_FollowUp/outputfile
+#$ -e /data/scratch/xxxxx/New_UKB/PHEWAS/MR_FollowUp/errorfile 
+"g) All environment variables in the qsub command's environment are to 
+be exported to the batch job"
+#$ -V 
+"h) Tells the job scheduler to send an email at the beginning (b) and at 
+the end (e) of the job"
+#$ -m be # b = begin, e = end
+#$ -M xxxxx@qmul.ac.uk
+
+"i) load necessary modules"
+module unload gcc
+module load gcc/7.1.0
+module load bgen
+
+"j) Sets an environment variable DATADIR that holds the path to the data directory"
+export DATADIR="/data/scratch/xxxxx/Imputations"
+
+"k) Changes the directory to the path specified by DATADIR."
+cd $DATADIR
+
+"l) Starts a loop over the numbers 1 through 22, which represent chromosome numbers"
+for i in {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22}; do
+
+"m) Sets a variable with a pattern for BGEN file paths,includes 
+placeholder ${i} for the chromosome number"
+bgen_pattern="/data/scratch/xxxxx/Imputations/ukb22828_c${i}_b0_v3.bgen" 
+
+"n) Similar to bgen_pattern, this sets a pattern for BGEN index file paths"
+bgen_index_pattern="/data/scratch/xxxxx/Imputations/ukb_imp_chr${i}_v3.bgen.bgi"
+
+"o) Defines a prefix for temporary genotype files"
+temp_geno_prefix="temp_genos"
+
+"p) "-g $bgen_pattern" specifies the BGEN file pattern to be used as input.
+The output (>) is redirected to a new BGEN file prefixed with "$temp_geno_prefix", 
+the chromosome number, and .bgen"
+bgenix -g $bgen_pattern -i $bgen_index_pattern  -incl-rsids $DATADIR/rsidlist_DBP_MR.txt -incl-range $DATADIR/chrposlist_DBP_MR.txt > $DATADIR/$temp_geno_prefix.chr_${i}.bgen
+done
+
+"q) This initializes an empty string variable named cmd that will be used to concatenate commands"
+cmd=""
+
+"r) This starts another loop that iterates over the same range of numbers (chromosome numbers)"
+for i in {1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22}; do
+
+"s) Within the loop, this line builds up a string in the cmd variable by 
+appending the path to each BGEN file corresponding to the chromosome number. 
+Each path is separated by a space"
+cmd="${cmd} ${temp_geno_prefix}.chr_${i}.bgen"
+done
+
+"t) a tool for concatenating multiple BGEN files into on & specifies 
+the output file for the concatenated BGEN files."
+cat-bgen -g ${cmd} -og $DATADIR/instruments_DBP_MR.bgen -clobber
+"u) Write index file .bgen.bgi"
+bgenix -g instruments_DBP_MR.bgen -index -clobber
+"v) To view BGEN file"
+bgenix -g instruments_DBP_MR.bgen -list
+#------[JOB SCRIPT END]-----
+#####################################################
+#run job:  Wallclock Time   = 00:15:17
+qsub extract_snps_DBP.sh
+
+#------------------------------------------------------------------------
+#3.Ensure SNP alignment - (using Terminal)
+"In the UK Biobank imputed data, multi-allelic SNPs are represented by 
+multiple rows with the same rsID, chromosome number, and position, 
+requiring allelic information for unique identification. To filter variants 
+of interest, the corresponding .bgen.bgi index file, which is a SQLite 
+database, can be queried using SQL. By joining SNP identifiers and 
+allele pairs from our data with the Variants table, we can extract 
+specific alleles. SNP alignment is crucial because UK Biobank data uses 
+GrCh37, where the first allele is the reference. Since the effect and 
+noneffect alleles in our data might not correspond directly, two SQL 
+join statements are used to account for opposite allele orientations. 
+Betas are flipped when necessary to align effect alleles correctly, 
+ensuring consistency in the final table."
+#------------------------------------------------------------------------
+# a) # Import the betas into the sqlite database as a table called Betas
+sqlite3 instruments_DBP_MR.bgen.bgi "DROP TABLE IF EXISTS DBP_MR;"
+sqlite3 -separator "," instruments_DBP_MR.bgen.bgi ".import DBP_MR.csv DBP_MR"
+sqlite3 instruments_DBP_MR.bgen.bgi "DROP TABLE IF EXISTS Joined;"
+
+# b) And inner join it to the index table (Variants), making a new table (Joined)
+# By joining on alleles as well as chromosome and position 
+# we can ensure only the relevant alleles from any multi-allelic SNPs are retained
+sqlite3 -header -csv instruments_DBP_MR.bgen.bgi \
+"CREATE TABLE Joined AS 
+  SELECT Variant.*, DBP_MR.chr_name, DBP_MR.Beta FROM Variant INNER JOIN DBP_MR 
+    ON Variant.chromosome = printf('%02d', DBP_MR.chr_name) 
+    AND Variant.position = DBP_MR.chr_position 
+    AND Variant.allele1 = DBP_MR.noneffect_allele 
+    AND Variant.allele2 = DBP_MR.effect_allele 
+  UNION 
+  SELECT Variant.*, DBP_MR.chr_name, -DBP_MR.Beta FROM Variant INNER JOIN DBP_MR
+    ON Variant.chromosome = printf('%02d', DBP_MR.chr_name) 
+    AND Variant.position = DBP_MR.chr_position 
+    AND Variant.allele1 = DBP_MR.effect_allele AND 
+    Variant.allele2 = DBP_MR.noneffect_allele;"
+
+# c) Filter the .bgen file to include only the alleles specified in the Betas for each SNP
+bgenix -g instruments_DBP_MR.bgen -table Joined > instruments_DBP_MR_New.bgen
+# d) And produce an index file for the new .bgen
+bgenix -g instruments_DBP_MR_New.bgen -index
+##########################################################################
+#------------------------------------------------------------------------
+#3. Calculate PRS - (using Terminal)
+#------------------------------------------------------------------------
+#Create SNP effect list
+cd /data/scratch/xxxxx/Imputations
+awk 'NR > 1 {print $1, $4, $6}' FS=',' OFS=' ' DBP_MR.csv | sed 's/"//g' > SNP_effect_DBP_MR.txt
+#Calculate PRS
+module load plink
+plink2 --bgen instruments_DBP_MR_New.bgen ref-first --sample ukb22828_c1_b0_v3_s487038.sample --score SNP_effect_DBP_MR.txt no-mean-imputation list-variants cols=+scoresums --out DBP_MR_PRS
