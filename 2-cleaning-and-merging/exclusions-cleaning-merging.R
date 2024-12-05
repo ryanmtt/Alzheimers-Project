@@ -133,5 +133,5 @@ final <- merge(final, WMH_PRS, by = "eid")
 # remove individuals with a non-positive age of dementia onset (n=4)
 final <-  final[final$dementia_age > 0 | is.na(final$dementia_age)]
 # save this final cleaned and merged dataset
-# write.csv(final, "R CODE/clean_merged.csv",row.names=FALSE)
+write.csv(final, "R CODE/clean_merged.csv",row.names=FALSE)
 
