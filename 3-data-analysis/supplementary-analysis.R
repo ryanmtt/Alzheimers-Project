@@ -2,7 +2,6 @@
 # (2) Models split at age at baseline 
 # (3) Binarised PRS scores 
 # (4) Poisson models
-# (5) Exclusion list detail 
 
 ########################## 1: All-cause dementia outcome models #####################################
 
@@ -313,35 +312,3 @@ wald_CI2(poisson_model3,robust_se3)
 wald_CI2(poisson_model4,robust_se4)
 
 ##############################################################################################
-############################ 5: Exclusion list detail ####################################
-
-# 1. Sex mismatch = 372
-sex_mismatch_ids <- fread("sexmismatch.txt")[[1]]
-# 2. Putative sex chromosome aneuploidy = 651
-aneuploidy_ids <- fread("aneiplody.txt")[[1]]
-# 3. Het/missing outliers = 968
-het_missing_outliers_ids <- fread("hetoutliers.txt")[[1]]
-# 4. Non-White British ancestry = 92,787
-non_white_british_ids <- fread("whitebritish.txt")[[1]]
-# 5. Relatedness = 81,795
-#(remove 1 individual of each related pair up to the third degree)
-relatedness_ids <- fread("relateds.txt")[[1]]
-# 6. Withdrawn individuals = 174
-withdrawn_ids <- fread("withdraw.txt")[[1]]
-# Combine all exclusion IDs = 176,747
-all_ids <- c(sex_mismatch_ids, aneuploidy_ids, het_missing_outliers_ids, non_white_british_ids, relatedness_ids, withdrawn_ids)
-# Remove duplicate IDs = 9,150. New Total = 167,597
-unique_ids <- unique(all_ids)
-# Create exclusion file
-write.table(unique_ids, file = "exclusion_ids.txt", row.names = FALSE, col.names = FALSE, quote = FALSE)
-#Example of using exclusion IDs on UKB PRS
-#load in PRS score = 487,409
-snp <- fread("~/Desktop/ResearchFellow/UKBiobank/WMH_PRS.sscore")
-summary(snp)
-#rename column names
-colnames(snp)[colnames(snp)=="IID"] <- "eid" 
-colnames(snp)[colnames(snp)=="SCORE1_SUM"] <- "PRS"
-summary(snp)
-#remove samples that did not pass QC, leaving = 335,130
-clean_sscore_data <- snp[!snp$eid %in% unique_ids, ]
-summary(clean_sscore_data)
