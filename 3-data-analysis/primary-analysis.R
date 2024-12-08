@@ -15,7 +15,10 @@ ggplot(final, aes(x = factor(DemAlz), y = PRS_DBP, fill = factor(DemAlz))) +
 ggplot(final, aes(x = factor(DemAlz), y = PRS_WMH, fill = factor(DemAlz))) +
   geom_boxplot()
 
-################# FINAL MODELS ##########################################################
+# 1: FINAL MODELS
+# 2: FIGURE 3 AND 4 PLOTS
+
+################# 1: FINAL MODELS ##########################################################
 # (a) Alzheimer's outcome models:
 # (b) Vascular dementia outcome models:
 # (c) All Cause outcome models: 
@@ -306,3 +309,62 @@ wald_CIt(modelac3)
 modelac4 <- glm(DemAllCause ~ PRS_WMH_STD*PRS_DBP_STD+Sex+Age+GPC1+GPC2+GPC3+GPC4+GPC5+GPC6+GPC7+GPC8+GPC9+GPC10, data = final, family = binomial)
 summary(modelac4)
 wald_CIt(modelac4)
+
+####################### 2: FIGURE 3 AND 4 PLOTS #######################################
+
+x1=plot_CI(model2a)[2:4,]
+x2=plot_CI(modela1)[2:5,]
+x3=plot_CI(modela1)[16,]
+x=rbind(x1,x2,x3) 
+rownames(x)=c(1:8)
+x[9,]=c("PRS_AD:PRS_SBP_2",10,10,10,10,0.5)
+x[10,]=c("PRS_AD_2",10,10,10,10,0.5)
+x$Variable=c("PRS_SBP_1","SexMale_1","Age_1","PRS_AD_2","PRS_SBP_2","SexMale_2","Age_2","PRS_AD:PRS_SBP_2","PRS_AD:PRS_SBP_1","PRS_AD_1")
+
+x <- x %>%
+  mutate(OR = as.numeric(OR),
+         LowerCI = as.numeric(LowerCI),
+         UpperCI = as.numeric(UpperCI))
+x <- x %>%
+  mutate(Factor = ifelse(grepl("_1$", Variable), "AD Model 2", 
+                         ifelse(grepl("_2$", Variable), "AD Model 4", NA)),
+         Variable = gsub("_1$|_2$", "", Variable))  # Use $ to ensure it matches at the end of the string
+x$Variable_order <- 1:nrow(x)
+
+forest_plot <- ggplot(x, aes(x = OR, y = reorder(Variable, -seq_along(Variable)), color = Factor)) +
+  geom_pointrange(aes(xmin = LowerCI, xmax = UpperCI),position = position_dodge2(width = 0.5, reverse = TRUE))+labs(title = "Model 2 and 4 estimated odds ratios", x = "Beta (with 95% CI)",  y = "Variable",colour="Model") +
+  geom_vline(xintercept = 1, linetype = "dashed", color = "black") +  # Add dashed line at x = 0
+  theme_minimal() + scale_x_continuous(limits = c(0.8, 2.4))+
+  theme(plot.title = element_text(hjust = 0.5, color = "black"),  # Title text color
+        axis.text.x = element_text(size = 12, color = "black"),  # X-axis text size and color
+        axis.text.y = element_text(size = 12, color = "black"))
+
+####### NOW for the DBP models:
+t1=plot_CI(model3a)[2:4,]
+t2=plot_CI(modela2)[2:5,]
+t3=plot_CI(modela2)[16,]
+t=rbind(t1,t2,t3)
+rownames(t)=c(1:8)
+# edit this to be of t form::::: !!!!!!!!!!!!!!
+t[9,]=c("PRS_AD:PRS_SBP_2",10,10,10,10,0.5)
+t[10,]=c("PRS_AD_2",10,10,10,10,0.5)
+t$Variable=c("PRS_DBP_1","SexMale_1","Age_1","PRS_AD_2","PRS_DBP_2","SexMale_2","Age_2","PRS_AD:PRS_DBP_2","PRS_AD:PRS_DBP_1","PRS_AD_1")
+
+t <- t %>%
+  mutate(OR = as.numeric(OR),
+         LowerCI = as.numeric(LowerCI),
+         UpperCI = as.numeric(UpperCI))
+t <- t %>%
+  mutate(Factor = ifelse(grepl("_1$", Variable), "AD Model 3", 
+                         ifelse(grepl("_2$", Variable), "AD Model 5", NA)),
+         Variable = gsub("_1$|_2$", "", Variable))  # Use $ to ensure it matches at the end of the string
+t$Variable_order <- 1:nrow(x)
+
+forest_plot2 <- ggplot(t, aes(x = OR, y = reorder(Variable, -seq_along(Variable)), color = Factor)) +
+  geom_pointrange(aes(xmin = LowerCI, xmax = UpperCI),position = position_dodge2(width = 0.5, reverse = TRUE))+labs(title = "Model 3 and 5 estimated odds ratios", x = "Beta (with 95% CI)",  y = "Variable",colour="Model") +
+  geom_vline(xintercept = 1, linetype = "dashed", color = "black") +  # Add dashed line at x = 0
+  theme_minimal() + scale_x_continuous(limits = c(0.8, 2.4))+
+  theme(plot.title = element_text(hjust = 0.5, color = "black"),  # Title text color
+        axis.text.x = element_text(size = 12, color = "black"),  # X-axis text size and color
+        axis.text.y = element_text(size = 12, color = "black"))
+
