@@ -1,5 +1,11 @@
+# (1) All-cause dementia outcome models
+# (2) Models split at age at baseline 
+# (3) Binarised PRS scores 
+# (4) Poisson models
+# (5) Exclusion list detail 
 
-# All Cause outcome models:
+########################## 1: All-cause dementia outcome models #####################################
+
 # AD and SBP interaction:
 modelac1<- glm(DemAllCause ~ PRS_AD_STD*PRS_SBP_STD+Sex+Age+GPC1+GPC2+GPC3+GPC4+GPC5+GPC6+GPC7+GPC8+GPC9+GPC10, data = final, family = binomial)
 summary(modelac1)
@@ -17,7 +23,8 @@ modelac4 <- glm(DemAllCause ~ PRS_WMH_STD*PRS_DBP_STD+Sex+Age+GPC1+GPC2+GPC3+GPC
 summary(modelac4)
 wald_CIt(modelac4)
 
-# Split into 2 age groups- those over and under 65- want to 
+########################## 2: Models split at age at baseline  #####################################
+
 # see if those diagnosed in the under 65 category have different relationships
 # with AD/dementia outcome going on?
 
@@ -88,9 +95,8 @@ wald_CI(modelint1_age_tt)
 modelint3_age_tt<- glm(DemVas ~ PRS_WMH_STD*PRS_SBP_STD+Sex+age_binary*PRS_SBP_STD+GPC1+GPC2+GPC3+GPC4+GPC5+GPC6+GPC7+GPC8+GPC9+GPC10, data = final, family = binomial)
 wald_CI(modelint3_age_tt)
 
-########################## 3B: Binarised PRS scores #####################################
+########################## 3: Binarised PRS scores #####################################
 
-# Binarise the PRS scores:
 final$PRS_AD_b<- ifelse(final$PRS_AD_STD > quantile(final$PRS_AD_STD[1], 0.75), 1, 0)
 final$PRS_SBP_b<- ifelse(final$PRS_SBP_STD > quantile(final$PRS_SBP_STD[1], 0.75), 1, 0)
 final$PRS_DBP_b<- ifelse(final$PRS_DBP_STD > quantile(final$PRS_DBP_STD[1], 0.75), 1, 0)
@@ -182,191 +188,8 @@ modelall4_bb<- glm(DemAllCause ~ PRS_WMH_b*PRS_DBP_b+Sex+Age+GPC1+GPC2+GPC3+GPC4
 summary(modelall4_bb)
 wald_CI(modelall4_bb)
 
-###################################################################################
+######################## 4: Poisson Models ###################################
 
-####################### PLOTS AND FIGURES #######################################
-
-x1=plot_CI(model2a)[2:4,]
-x2=plot_CI(modela1)[2:5,]
-x3=plot_CI(modela1)[16,]
-x=rbind(x1,x2,x3) 
-rownames(x)=c(1:8)
-x[9,]=c("PRS_AD:PRS_SBP_2",10,10,10,10,0.5)
-x[10,]=c("PRS_AD_2",10,10,10,10,0.5)
-x$Variable=c("PRS_SBP_1","SexMale_1","Age_1","PRS_AD_2","PRS_SBP_2","SexMale_2","Age_2","PRS_AD:PRS_SBP_2","PRS_AD:PRS_SBP_1","PRS_AD_1")
-
-x <- x %>%
-  mutate(OR = as.numeric(OR),
-         LowerCI = as.numeric(LowerCI),
-         UpperCI = as.numeric(UpperCI))
-x <- x %>%
-  mutate(Factor = ifelse(grepl("_1$", Variable), "AD Model 2", 
-                         ifelse(grepl("_2$", Variable), "AD Model 4", NA)),
-         Variable = gsub("_1$|_2$", "", Variable))  # Use $ to ensure it matches at the end of the string
-x$Variable_order <- 1:nrow(x)
-
-forest_plot <- ggplot(x, aes(x = OR, y = reorder(Variable, -seq_along(Variable)), color = Factor)) +
-  geom_pointrange(aes(xmin = LowerCI, xmax = UpperCI),position = position_dodge2(width = 0.5, reverse = TRUE))+labs(title = "Model 2 and 4 estimated odds ratios", x = "Beta (with 95% CI)",  y = "Variable",colour="Model") +
-  geom_vline(xintercept = 1, linetype = "dashed", color = "black") +  # Add dashed line at x = 0
-  theme_minimal() + scale_x_continuous(limits = c(0.8, 2.4))+
-  theme(plot.title = element_text(hjust = 0.5, color = "black"),  # Title text color
-        axis.text.x = element_text(size = 12, color = "black"),  # X-axis text size and color
-        axis.text.y = element_text(size = 12, color = "black"))
-
-
-####### NOW for the DBP models:
-t1=plot_CI(model3a)[2:4,]
-t2=plot_CI(modela2)[2:5,]
-t3=plot_CI(modela2)[16,]
-t=rbind(t1,t2,t3)
-rownames(t)=c(1:8)
-# edit this to be of t form::::: !!!!!!!!!!!!!!
-t[9,]=c("PRS_AD:PRS_SBP_2",10,10,10,10,0.5)
-t[10,]=c("PRS_AD_2",10,10,10,10,0.5)
-t$Variable=c("PRS_DBP_1","SexMale_1","Age_1","PRS_AD_2","PRS_DBP_2","SexMale_2","Age_2","PRS_AD:PRS_DBP_2","PRS_AD:PRS_DBP_1","PRS_AD_1")
-
-t <- t %>%
-  mutate(OR = as.numeric(OR),
-         LowerCI = as.numeric(LowerCI),
-         UpperCI = as.numeric(UpperCI))
-t <- t %>%
-  mutate(Factor = ifelse(grepl("_1$", Variable), "AD Model 3", 
-                         ifelse(grepl("_2$", Variable), "AD Model 5", NA)),
-         Variable = gsub("_1$|_2$", "", Variable))  # Use $ to ensure it matches at the end of the string
-t$Variable_order <- 1:nrow(x)
-
-forest_plot2 <- ggplot(t, aes(x = OR, y = reorder(Variable, -seq_along(Variable)), color = Factor)) +
-  geom_pointrange(aes(xmin = LowerCI, xmax = UpperCI),position = position_dodge2(width = 0.5, reverse = TRUE))+labs(title = "Model 3 and 5 estimated odds ratios", x = "Beta (with 95% CI)",  y = "Variable",colour="Model") +
-  geom_vline(xintercept = 1, linetype = "dashed", color = "black") +  # Add dashed line at x = 0
-  theme_minimal() + scale_x_continuous(limits = c(0.8, 2.4))+
-  theme(plot.title = element_text(hjust = 0.5, color = "black"),  # Title text color
-        axis.text.x = element_text(size = 12, color = "black"),  # X-axis text size and color
-        axis.text.y = element_text(size = 12, color = "black"))
-
-
-#################################################################################
-
-##############################################################################################
-
-# Other model attempts- inputting interaction term in a different form: (and plotting attempt)
-# try quadratic interaction:
-
-modelt <- glm(DemAlz ~ PRS_AD_STD*PRS_SBP_STD+Sex+Age+GPC1+GPC2+GPC3+GPC4+GPC5+GPC6+GPC7+GPC8+GPC9+GPC10, data = final, family = binomial)
-summary(modelt)
-exp(coefficients(modelt))
-
-# SBP:
-model4a <- glm(DemAlz ~ PRS_AD_STD * PRS_SBP_STD  + Sex + Age + 
-                 GPC1 + GPC2 + GPC3 + GPC4 + GPC5 + GPC6 + GPC7 + GPC8 + GPC9 + GPC10,
-               data = final, family = binomial)
-model4ac <- glm(DemAlz ~ PRS_AD_STD * PRS_SBP_STD + I(PRS_SBP_STD^2) + Sex + Age + 
-                 GPC1 + GPC2 + GPC3 + GPC4 + GPC5 + GPC6 + GPC7 + GPC8 + GPC9 + GPC10,
-               data = final, family = binomial)
-model4e <- glm(DemAlz ~ PRS_AD_STD * PRS_SBP_STD + I(PRS_AD_STD^2) * I(PRS_SBP_STD^2) +
-                 I(PRS_AD_STD^2):PRS_SBP_STD + PRS_AD_STD:I(PRS_SBP_STD^2) + Sex + Age + 
-                 GPC1 + GPC2 + GPC3 + GPC4 + GPC5 + GPC6 + GPC7 + GPC8 + GPC9 + GPC10,
-               data = final, family = binomial)
-
-# DBP:
-model5e <- glm(DemAlz ~ PRS_AD_STD * PRS_DBP_STD +
-        I(PRS_AD_STD^2):PRS_SBP_STD + PRS_AD_STD:I(PRS_SBP_STD^2) + Sex + Age + 
-                 +       GPC1 + GPC2 + GPC3 + GPC4 + GPC5 + GPC6 + GPC7 + GPC8 + GPC9 + GPC10,
-               +      data = final, family = binomial)
-
-# SBP WMH:
-model4g <- glm(DemVas ~ PRS_WMH_STD * PRS_SBP_STD + I(PRS_WMH_STD^2) + I(PRS_SBP_STD^2) +
-                 I(PRS_WMH_STD^2):PRS_SBP_STD + PRS_WMH_STD:I(PRS_SBP_STD^2) +
-                 I(PRS_WMH_STD^2):I(PRS_SBP_STD^2) + Sex + Age + 
-                 GPC1 + GPC2 + GPC3 + GPC4 + GPC5 + GPC6 + GPC7 + GPC8 + GPC9 + GPC10,
-               data = final, family = binomial)
-
-
-# Specify the level for the categorical variable Sex
-sex_level <- "Male"  # or "Female", based on your preference
-
-# Create a sequence of values for PRS_AD_STD
-prs_ad_seq <- seq(min(final$PRS_AD_STD), max(final$PRS_AD_STD), length.out = 100)
-
-# Sample 10 values of PRS_SBP_STD
-set.seed(123)  # For reproducibility
-prs_sbp_levels <- sample(unique(final$PRS_SBP_STD), 10)
-
-# Create a new data frame with these values
-new_data <- expand.grid(
-  PRS_AD_STD = prs_ad_seq,
-  PRS_SBP_STD = prs_sbp_levels,
-  Sex = sex_level,  # Use a specific level for the categorical variable
-  Age = mean(final$Age),  # Use mean for continuous variables
-  GPC1 = mean(final$GPC1),  # Repeat for all GPCs
-  GPC2 = mean(final$GPC2),
-  GPC3 = mean(final$GPC3),
-  GPC4 = mean(final$GPC4),
-  GPC5 = mean(final$GPC5),
-  GPC6 = mean(final$GPC6),
-  GPC7 = mean(final$GPC7),
-  GPC8 = mean(final$GPC8),
-  GPC9 = mean(final$GPC9),
-  GPC10 = mean(final$GPC10)
-)
-
-# Predict probabilities
-new_data$pred_prob <- predict(model4a, newdata = new_data, type = "response")
-# Load ggplot2 if not already loaded
-library(ggplot2)
-
-# Create the plot
-ggplot(new_data, aes(x = PRS_AD_STD, y = pred_prob, color = as.factor(PRS_SBP_STD))) +
-  geom_line() +
-  labs(
-    x = "PRS_AD_STD",
-    y = "Predicted Probability of DemAlz",
-    color = "PRS_SBP_STD",
-    title = "Interaction Effect of PRS_AD_STD and PRS_SBP_STD"
-  ) +
-  theme_minimal()
-
-
-############################ SUPPLEMENTARY MATERIAL ####################################
-
-
-### Exclusion list detail #####
-# 1. Sex mismatch = 372
-sex_mismatch_ids <- fread("sexmismatch.txt")[[1]]
-# 2. Putative sex chromosome aneuploidy = 651
-aneuploidy_ids <- fread("aneiplody.txt")[[1]]
-# 3. Het/missing outliers = 968
-het_missing_outliers_ids <- fread("hetoutliers.txt")[[1]]
-# 4. Non-White British ancestry = 92,787
-non_white_british_ids <- fread("whitebritish.txt")[[1]]
-# 5. Relatedness = 81,795
-#(remove 1 individual of each related pair up to the third degree)
-relatedness_ids <- fread("relateds.txt")[[1]]
-# 6. Withdrawn individuals = 174
-withdrawn_ids <- fread("withdraw.txt")[[1]]
-# Combine all exclusion IDs = 176,747
-all_ids <- c(sex_mismatch_ids, aneuploidy_ids, het_missing_outliers_ids, non_white_british_ids, relatedness_ids, withdrawn_ids)
-# Remove duplicate IDs = 9,150. New Total = 167,597
-unique_ids <- unique(all_ids)
-# Create exclusion file
-write.table(unique_ids, file = "exclusion_ids.txt", row.names = FALSE, col.names = FALSE, quote = FALSE)
-#Example of using exclusion IDs on UKB PRS
-#load in PRS score = 487,409
-snp <- fread("~/Desktop/ResearchFellow/UKBiobank/WMH_PRS.sscore")
-summary(snp)
-#rename column names
-colnames(snp)[colnames(snp)=="IID"] <- "eid" 
-colnames(snp)[colnames(snp)=="SCORE1_SUM"] <- "PRS"
-summary(snp)
-#remove samples that did not pass QC, leaving = 335,130
-clean_sscore_data <- snp[!snp$eid %in% unique_ids, ]
-summary(clean_sscore_data)
-# cant use these as I don't have the appropriate text files
-#############################################
-
-
-# NON-LINEAR (BINARY) EXPLANATORY VARIABLE MODELS- poisson model
-
-# POISSON MODEL:
 poisson_model <- glm(DemAlz ~ PRS_AD_STD*PRS_SBP_STD+Sex+Age+GPC1+GPC2+GPC3+GPC4+GPC5+GPC6+GPC7+GPC8+GPC9+GPC10, data = final, family = poisson())
 poisson_model2 <- glm(DemAlz ~ PRS_AD_STD*PRS_DBP_STD+Sex+Age+GPC1+GPC2+GPC3+GPC4+GPC5+GPC6+GPC7+GPC8+GPC9+GPC10, data = final, family = poisson())
 poisson_model3 <- glm(DemVas ~ PRS_WMH_STD*PRS_SBP_STD+Sex+Age+GPC1+GPC2+GPC3+GPC4+GPC5+GPC6+GPC7+GPC8+GPC9+GPC10, data = final, family = poisson())
@@ -489,14 +312,36 @@ wald_CI2(poisson_model2,robust_se2)
 wald_CI2(poisson_model3,robust_se3)
 wald_CI2(poisson_model4,robust_se4)
 
-###################################################
+##############################################################################################
+############################ 5: Exclusion list detail ####################################
 
-# log binomial model:
-log_binom_model <- glm(DemAlz ~ PRS_AD_STD*PRS_SBP_STD+Sex+Age+GPC1+GPC2+GPC3+GPC4+GPC5+GPC6+GPC7+GPC8+GPC9+GPC10, data = final, family = binomial(link = "log"),
-                       control = glm.control(maxit = 100))
-log_binom_model2 <- glm(DemAlz ~ PRS_AD_STD*PRS_DBP_STD+Sex+Age+GPC1+GPC2+GPC3+GPC4+GPC5+GPC6+GPC7+GPC8+GPC9+GPC10, data = final, family = binomial(link = "log"),
-                        control = glm.control(maxit = 100))
-wald_CI(log_binom_model)
-wald_CI(log_binom_model2)
-# can use either a log-binomial or poisson model to get risk ratios from binary outcome
-
+# 1. Sex mismatch = 372
+sex_mismatch_ids <- fread("sexmismatch.txt")[[1]]
+# 2. Putative sex chromosome aneuploidy = 651
+aneuploidy_ids <- fread("aneiplody.txt")[[1]]
+# 3. Het/missing outliers = 968
+het_missing_outliers_ids <- fread("hetoutliers.txt")[[1]]
+# 4. Non-White British ancestry = 92,787
+non_white_british_ids <- fread("whitebritish.txt")[[1]]
+# 5. Relatedness = 81,795
+#(remove 1 individual of each related pair up to the third degree)
+relatedness_ids <- fread("relateds.txt")[[1]]
+# 6. Withdrawn individuals = 174
+withdrawn_ids <- fread("withdraw.txt")[[1]]
+# Combine all exclusion IDs = 176,747
+all_ids <- c(sex_mismatch_ids, aneuploidy_ids, het_missing_outliers_ids, non_white_british_ids, relatedness_ids, withdrawn_ids)
+# Remove duplicate IDs = 9,150. New Total = 167,597
+unique_ids <- unique(all_ids)
+# Create exclusion file
+write.table(unique_ids, file = "exclusion_ids.txt", row.names = FALSE, col.names = FALSE, quote = FALSE)
+#Example of using exclusion IDs on UKB PRS
+#load in PRS score = 487,409
+snp <- fread("~/Desktop/ResearchFellow/UKBiobank/WMH_PRS.sscore")
+summary(snp)
+#rename column names
+colnames(snp)[colnames(snp)=="IID"] <- "eid" 
+colnames(snp)[colnames(snp)=="SCORE1_SUM"] <- "PRS"
+summary(snp)
+#remove samples that did not pass QC, leaving = 335,130
+clean_sscore_data <- snp[!snp$eid %in% unique_ids, ]
+summary(clean_sscore_data)
